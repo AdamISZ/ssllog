@@ -71,7 +71,7 @@ FF_to_backend_port = 0
 #random port which FF uses as proxy port. Local stcppipe listens on this port and forwards traffic to random_ssh_port
 FF_proxy_port = 0
 #ID of a public snapshot on Amazon EC2. How this snapshot was created is outlined in oracle/INSTALL
-oracle_snapID = 'snap-d4741ed0'
+oracle_snapID = 'snap-b9cbf8a7'
 
 accno = None
 sum_ = None
