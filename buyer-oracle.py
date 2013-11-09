@@ -544,7 +544,7 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
         return 'error in urllib'
     try:
         di_dom = minidom.parseString(di_xml)
-        if len(di_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle'
+        if len(di_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle: describeinstances had error'
 
         is_dns_found = False
         dns_names = di_dom.getElementsByTagName('dnsName')
@@ -556,28 +556,29 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
             is_dns_found = True
             break
         if not is_dns_found:
-            return 'bad oracle'
+            return 'bad oracle: dns not found'
         instance = one_dns_name.parentNode
     
-        if instance.getElementsByTagName('imageId')[0].firstChild.data != 'ami-a73264ce' or\
+        if instance.getElementsByTagName('imageId')[0].firstChild.data != 'ami-8e987ef9' or\
         instance.getElementsByTagName('instanceState')[0].getElementsByTagName('name')[0].firstChild.data != 'running' or\
         instance.getElementsByTagName('rootDeviceName')[0].firstChild.data != '/dev/sda1':
-            return 'bad oracle'
+            return 'bad oracle: imageid or instancestate etc'
         launchTime = instance.getElementsByTagName('launchTime')[0].firstChild.data
         instanceId = instance.getElementsByTagName('instanceId')[0].firstChild.data
         ownerId = instance.parentNode.parentNode.getElementsByTagName('ownerId')[0].firstChild.data
         
         volumes = instance.getElementsByTagName('blockDeviceMapping')[0].getElementsByTagName('item')
         if len(volumes) > 1: return 'bad oracle'
-        if volumes[0].getElementsByTagName('deviceName')[0].firstChild.data != '/dev/sda2': return 'bad oracle'
-        if volumes[0].getElementsByTagName('ebs')[0].getElementsByTagName('status')[0].firstChild.data != 'attached': return 'bad oracle'
+        if volumes[0].getElementsByTagName('deviceName')[0].firstChild.data != '/dev/sda2': return 'bad oracle: not sda2'
+        if volumes[0].getElementsByTagName('ebs')[0].getElementsByTagName('status')[0].firstChild.data != 'attached': return 'bad oracle: not attached'
         instance_volumeId = volumes[0].getElementsByTagName('ebs')[0].getElementsByTagName('volumeId')[0].firstChild.data
         attachTime = volumes[0].getElementsByTagName('ebs')[0].getElementsByTagName('attachTime')[0].firstChild.data
         #example of aws time string 2013-10-12T21:17:31.000Z
         if attachTime[:17] != launchTime[:17]:
-            return 'bad oracle'
-        if int(attachTime[17:19])-int(launchTime[17:19]) > 3:
-            return 'bad oracle'
+            return 'bad oracle: different times'
+        #temporarily removed time check for testing
+        #if int(attachTime[17:19])-int(launchTime[17:19]) > 3:
+            #return 'bad oracle: too big difference in launch time'
     except Exception,e:
         print(e, end='\r\n')
         return 'bad data from Amazon'
@@ -590,7 +591,7 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
         return 'error in urllib'
     try:
         dv_dom = minidom.parseString(dv_xml)
-        if len(dv_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle'
+        if len(dv_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle: error in describevolumes'
 
         is_volumeID_found = False
         volume_IDs = dv_dom.getElementsByTagName('volumeId')
@@ -600,13 +601,13 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
             is_volumeID_found = True
             break
         if not is_volumeID_found:
-            return 'bad oracle'
+            return 'bad oracle: volumeID not found'
         volume = one_volume_ID.parentNode
     
         if volume.getElementsByTagName('snapshotId')[0].firstChild.data != oracle_snapID or\
         volume.getElementsByTagName('status')[0].firstChild.data != 'in-use' or\
         volume.getElementsByTagName('volumeType')[0].firstChild.data != 'standard':
-            return 'bad oracle'
+            return 'bad oracle: wrong snapid or not in use or not standard'
         createTime = volume.getElementsByTagName('createTime')[0].firstChild.data
         
         attached_volume = volume.getElementsByTagName('attachmentSet')[0].getElementsByTagName('item')[0]
@@ -616,7 +617,7 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
         attached_volume.getElementsByTagName('status')[0].firstChild.data != 'attached' or\
         attached_volume.getElementsByTagName('attachTime')[0].firstChild.data != attachTime or\
         attached_volume.getElementsByTagName('attachTime')[0].firstChild.data != createTime:
-            return 'bad oracle'
+            return 'bad oracle: something wrong with volume data'
     except Exception,e:
         print(e, end='\r\n')
         return 'bad data from Amazon'
@@ -631,13 +632,13 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
         gco_dom = minidom.parseString(gco_xml)
         base64output = gco_dom.getElementsByTagName('output')[0].firstChild.data
         logdata = base64.b64decode(base64output)
-        if len(gco_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle'
+        if len(gco_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle: error in GetConsoleOutput'
         if gco_dom.getElementsByTagName('instanceId')[0].firstChild.data != instanceId:
-            return 'bad oracle'
+            return 'bad oracle: wrong instanceID in consoleoutput'
 
         #Only xvda2 is allowed to be in the log and no other string matchin the regex xvd*
         if re.search('xvd[^a] | xvda[^2]', logdata) != None:
-            return 'bad oracle'
+            return 'bad oracle: something other than xvda2 in console output'
     except Exception,e:
         print(e, end='\r\n')
         return 'bad data from Amazon'
@@ -673,12 +674,12 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
         return 'error in urllib'
     try:
         gu_dom = minidom.parseString(gu_xml)
-        if len(gu_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle'
+        if len(gu_dom.getElementsByTagName('ErrorResponse')) > 0: return 'bad oracle: error in GetUser'
     
         names = gu_dom.getElementsByTagName('UserId')
-        if len(names) > 1: return 'bad oracle'
+        if len(names) > 1: return 'bad oracle: too many names'
         arn = gu_dom.getElementsByTagName('Arn')[0].firstChild.data
-        if not arn.endswith(ownerId+":root"): return 'bad oracle'
+        if not arn.endswith(ownerId+":root"): return 'bad oracle:wrong ownerid'
     except Exception,e:
         print(e, end='\r\n')
         return 'bad data from Amazon'
@@ -687,7 +688,7 @@ def check_oracle_urls (GetUserURL, ListMetricsURL, DescribeInstancesURL, Describ
     try:
         AccessKeyId = GetUserURL.split('/?AWSAccessKeyId=')[1].split('&')[0]
         for url in (ListMetricsURL, DescribeInstancesURL, DescribeVolumesURL, GetConsoleOutputURL):
-            if AccessKeyId != url.split('/?AWSAccessKeyId=')[1].split('&')[0] : return 'bad oracle'
+            if AccessKeyId != url.split('/?AWSAccessKeyId=')[1].split('&')[0] : return 'bad oracle:inconsistent AccessKeys'
     except Exception,e:
         print(e, end='\r\n')
         return 'bad data from Amazon'
