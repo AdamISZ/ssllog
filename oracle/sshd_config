@@ -37,7 +37,7 @@ LogLevel INFO
 #					(---
 #changed from LoginGraceTime 120
 # 3 seconds should be plenty to send a pubkey.
-LoginGraceTime 3
+LoginGraceTime 10
 #changed from PermitRootLogin yes 
 PermitRootLogin no
 #					---)
